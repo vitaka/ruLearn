@@ -1,0 +1,8 @@
+#! /bin/sh
+if test -z "${PYTHONPATH}"; then
+   PYTHONPATH=__LIBDIR__/python
+else
+   PYTHONPATH=__LIBDIR__/python:${PYTHONPATH}
+fi
+export PYTHONPATH
+exec __LIBDIR__/python/`basename $0`.py "$@"

@@ -1,0 +1,226 @@
+ruLearn documentation
+----------------------------------------------------------------------
+
+ruLearn is an open-source toolkit for the automatic inference of shallow-transfer
+rules from small parallel corpora. It creates rules that can be used without further
+modification in the Apertium RBMT platform.
+
+ruLearn implements the rule inference algorithm described in the following publication:
+
+Víctor M. Sánchez-Cartagena, Juan A. Pérez-Ortiz, Felipe Sánchez-Martínez. A generalised alignment template formalism and its application to the inference of shallow-transfer machine translation rules from scarce bilingual corpora. In Computer Speech & Language (Special Issue on Hybrid Machine Translation). volume 32, issue 1, p. 49-90.
+You can find a PDF copy at: http://www.dlsi.ua.es/~fsanchez/pub/pdf/sanchez-cartagena15a.pdf
+
+This document covers the following topics:
+
+- Prerequisites
+- Installation
+- Running ruLearn
+- Linguistic configuration
+- Understanding the output
+- Using the the inferred rules with Apertium
+
+Prerequisites
+----------------------------------------------------------------------------
+ruLearn only runs on GNU/Linux. Currently, there are no plans to adapt it
+to other platforms. ruLearn has the following main software prerequisites:
+
+- Apertium and lttoolbox. You need an Apertium version with support for the '<reject-current-rule>
+instruction. Support was added in version 3.4. ruLearn
+installation script will complain if the instruction is not implemented.
+
+- "parallel" command from the "moreutils" package. See http://joeyh.name/code/moreutils/ for installation instructions.
+
+- Python (min. version: 2.6.7) and the PuLP module. See PuLP http://pythonhosted.org/PuLP/main/installing_pulp_at_home.html for installation instructions.
+
+- Bash, Java and Perl interpreters.
+
+Installation
+----------------------------------------------------------------------------
+
+ruLearn can be compiled and installed from source by executing the typical
+command sequence for a program packaged with GNU autotools.
+
+$ cd ruLearn
+$ ./autogen.sh
+$ ./configure && make && make install
+
+This default command sequences assumes you have enough privileges to install
+software in the default location of your system. If you want to install ruLearn
+under a different prefix, replace the last command with:
+
+$ ./configure --prefix "YOUR_PREFIX" && make && make install
+
+
+Running ruLearn
+---------------------------------------------------------------------------
+
+You need at least a parallel corpus and a working installation of an Apertium language
+pair in order to run ruLearn and obtain a set of shallow-transfer rules.
+
+
+WARNING: we recommend you to use small corpora for inferring rules. If the --only_lexical_generalisation flag
+is not enabled, inferring rules from parallel corpora with more than 5,000 words in each language could
+take some weeks. If the flag is enabled, you can safely reach 100,000 words in each language.
+ruLearn will use all the available CPUs.
+
+The rule extraction algorithm also needs a user-defined threshold to properly work. This threshold
+is the minimum proportion of the bilingual phrases matched by an alignment templates which
+must be correctly reproduced by it. The alignment templates whose proportion of matching bilingual
+phrases which are correctly reproduced is below the threshold value are discarded.
+If a development corpus is provided, the program will choose the most appropriate
+threshold from a range. Otherwise, you can specify the exact value of the threshold or tell
+ruLearn to use a fragment of the training corpus as a development corpus.
+
+The simplest way of running ruLearn is the following:
+
+$ ruLearn --source_language SOURCE_LANGUAGE_CODE --target_language TARGET_LANGUAGE_CODE --corpus TRAINING_CORPUS --data_dir SOURCE_DIRECTORY_OF_APERTIUM_LANGUAGE_PAIR --work_dir OUTPUT_DIRECTORY --config LINGUISTIC_CONFIG_FILE --discard_a_fifth_of_corpus --alignments_with_bildic
+
+The files TRAINING_CORPUS.SOURCE_LANGUAGE_CODE TRAINING_CORPUS.TARGET_LANGUAGE_CODE must exist and contain the same number of lines. The directory SOURCE_DIRECTORY_OF_APERTIUM_LANGUAGE_PAIR must
+contain the Apertium language pair data (i.e., the content of the checkout from the Apertium SVN of a directory apertium-LANGUAGE1-LANGUAGE2). The content of LINGUISTIC_CONFIG_FILE will be discussed in the next section. ruLearn will write all the intermediate files and the resulting rules in OUTPUT_DIRECTORY. In this example, one fifth of the training corpus will be used as a development corpus.
+
+This is the list of the most important available options:
+ -s,--source_language:  source language code (mandatory) (default: 'es')
+ -t,--target_language:  target language code (mandatory) (default: 'ca')
+ -c,--corpus:  Prefix of files containing the training parallel corpus (suffixes are .SL and .TL; mandatory) (default: '')
+ -g,--config:  Linguistic configuration file (mandatory)
+ -d,--data_dir:  Directory where the source and compiled Apertium dictionaries can be found (default: APERTIUM_INSTALLATION_PREFIX/local/share/apertium/apertium-SL-TL/)
+ -m,--work_dir:  Directory where all the results will be written (mandatory)
+ -f,--filtering_thresholds:  Thresholds for filtering alignment templates. Format is start step end, as in the seq command. A single threshold can also be defined (default: '0 0.05 1')
+ -w,--theta_threshold:  Number of bilingual phrases a GAT must reproduce in order not to be discarded. We recommend using the default value (default: '2')
+ -e,--test_corpus:  Evaluation corpus prefix (suffixes are .SL and .TL). If an evaluation corpus is provided, the resulting rules will be evaluated against this corpus.
+ -v,--dev_corpus:  Development corpus prefix (suffixes are .SL and .TL). It is used to choose the most appropriate threshold. If a development corpus is not provided with this option, the flag --discard_a_fifth_of_corpus should be enabled or a single threshold must be defined with the parameter --filtering_thresholds.
+ -a,--corpus_head_size:  Size (in lines) of the prefix of the training corpus to use. If this option is not set, the whole corpus will be used. (default: '')
+ -p,--[no]alignments_with_lemmas:  Use only lemmas to learn alignment models and obtain Viterbi alignment (default: false)
+ -j,--[no]alignments_with_bildic:  Add bilingual dictionary to corpus for obtaining word alignments. This option is likely to increase quality of the obtained rules. (default: false)
+ -b,--[no]discard_a_fifth_of_corpus:  Discard a fifth part of the training corpus and use it as development corpus. (default: false)
+ -q,--[no]only_lexical_generalisation:  Don't generalise among unseen linguistic features. Enabling this option will significantly speed up the inference process. Enable it if your parallel corpus contains more than 5000 words. (default: false)
+ -B,--override_bin_bil_dir:  Use this file as L1-L2 compiled bilingual dictionary (default: '')
+ -C,--override_bin_bil_inv:  Use this file as L2-L1 compiled bilingual dictionary (default: '')
+ -Y,--override_mono_dix_l1:  Use this file as L1 monolingual dictionary. Enable this option if you get an error message stating that the source language monolingual dictionary cannot be found. (default: '')
+ -Z,--override_mono_dix_l2:  Use this file as L2 monolingual dictionary. Enable this option if you get an error message stating that the target language monolingual dictionary cannot be found. (default: '')
+ -X,--[no]bibtex:  Print BibTeX entries of the main publications related to this software package (default: false)
+
+Linguistic configuration
+-----------------------------------------------------------------------
+
+The mandatory parameter --config defines the linguistic configuration file. It is a sort of
+INI configuration file that contains some linguistic information needed in order to
+properly extract shallow-transfer rules from the parallel corpus. The sections that
+must be included in the file and their meaning are listed below. You can find
+example linguistic configuration files for different language pairs under INSTALLATION_PREFIX/local/share/ruLearn
+
+* [tag groups] and [tag sequences]
+
+Although Apertium does not explicitly encode the type of each morphological inflection tag (e.g. <f> is a gender and
+<sg> is a number), the inference algorithm needs this information. Therefore, it must be explicitly defined
+in these sections. The first one defines the morphological inflection tag types and their possible values, for instance:
+
+gender:m,f,mf,GD,nt
+
+When the same tag belongs to different tag types, the lexical category is used to break the ambiguity. For instance, "<pos>"
+could mean that a determiner is possessive or that an adjective is possessive:
+
+determinertype:def,ind,dem,pos:det
+adjtype:ind,itg,pos,sup:adj
+
+Once all the types of tags are defined, the sequences of types of tags which the lexical forms of each lexical category
+should contain are defined in the [tag sequences] section. For instance, in the Spanish-Catalan language pair, adjectives contain an adjective type, a gender and a number:
+
+adj:adjtype,gender,numberat
+
+In some cases some tags may not be present. For instance, possessive adjectives contain the tag "<pos>",
+but common adjectives do not contain a tag specifying the type of adjective. It is not a problem, since, in that case,
+the algorithm will create a special "empty" tag. Note also that the set of tag types and sequences are the same for both languages of the pair.
+
+A good way of identifying all the tag groups and sequences is listing all the
+sequences of tags that can be found in monolingual dictionary entries with the following commands:
+
+lt-expand SL_MONOLINGUAL_DICTIONARY.dix | grep -Fv ':<:' | sed 's_:>:_:_' | cut -f 2 -d ':' | tr '+' '\n' | sed 's:^[^<]*<:<:' | cut -f 1 -d '#' | LC_ALL=C sort -u
+
+lt-expand TL_MONOLINGUAL_DICTIONARY.dix | grep -Fv ':>:' | sed 's_:<:_:_' | cut -f 2 -d ':' | tr '+' '\n' | sed 's:^[^<]*<:<:' | cut -f 1 -d '#' | LC_ALL=C sort -u
+
+[preprocess SL] and [preprocess TL]
+
+When analysing the parallel corpus with Apertium, some additional operations may be needed.
+See the linguistic configuration files for the es-ca and ca-es language pairs to obtain some examples of operations which need to be carried out after the analysis. The main reason
+to include these additional operations is that Apertium language pairs are not
+symmetric. When ruLearn analyses the training corpus for rule inference, it
+uses the result of compiling TL monolingual dictionary as if it is used for analysing
+the input text in the TL->SL language pair. The morphological inflection information
+tags may not be the same as when the TL monolingual dictionary is used for generating
+surface forms in the SL->TL language pair. A typical example is the definite determiner
+in Catalan when inferring rules for the Spanish->Catalan language pair.
+ When this determiner is placed before a word that starts with vowel, it is written as
+"l'" instead of "el" (masculine) or "la" (feminine). When the Catalan monolingual
+dictionary is compiled for analysis, it analyses "l'" as <det><def><mf><sg> (definite determiner
+masculine-feminine singular). However, when the Catalan dictionary is compiled for
+generation, it does not contain any entry for "l'<det><def><mf><sg>" because, when we translate
+from Spanish, the transfer module only generates determiners with either masculine or
+feminine gender, and the post-generation module is the one that turns el+vowel or la+vowel
+into l'+vowel. Thus, we don't want the automatically inferred transfer rules
+to generate "l'<det><def><mf><sg>". In order to avoid that, we must postprocess the output
+of the analysis of the Catalan side of the training corpus to replace the lexical forms
+"l'<det><def><mf><sg>" with either "el<det><def><m><sg>" or "la<det><def><f><sg>".
+
+
+If you are not sure about what to include in these sections, leave them empty.
+
+[markers]
+
+Extraction of bilingual phrases from the parallel corpus is guided by words
+of closed lexical categories. These categories are defined in this section.
+Usually, the following markers are used:
+
+cm,cnjcoo,cnjsub,det,detnt,lpar,lquest,pr,preadv,predet,prn,rel,rpar,vbdo,vbhaver,vbmod,vbser,vaux,gen
+
+When dealing with a new language pair, they may need to be updated
+
+[post transfer]
+
+When applying the learned rules, it may be necessary to join some lexical forms generated by them to allow the
+Apertium generation module to correctly inflect them. For instance, verbs and enclitic pronouns are
+found as a single unit in the Apertium monolingual dictionaries. The sequences of lexical
+forms that will be joined when applying and evaluating the rule inference algorithm are defined in this section.
+The expected format is the following: one sequence per line, lexical forms separated by whitespace, lemma
+is not mandatory, a wildcard (*) can be used in order to match any sequence of tags for a given
+lexical form. See the es-ca sample configuration file for a complete example of the
+values encoded in this section.
+
+
+Understanding the output
+-----------------------------------------------------------------------
+
+Result, in generalised alignment template (GAT) format, can be found in $DIR/tuning-proportion_correct_bilphrases_thresholdabove2-$THRESHOLD-subrules/result-f-$THRESHOLD.gz
+The formalism used by this approach works as follows.
+Let the GAT in the following line be one of the GATs generated by the rule extraction algorithm.
+
+<det><def><m><*numberat> <n><empty_tag_ntype><mf><*numberat> | <det><def><m><)000numberat> <n><empty_tag_ntype><mf><)001numberat> | 0:0 1:1 | <det><def><m> <n><empty_tag_ntype><mf>
+
+Fields are separated by '|'.
+- The first field is the sequence of lexical forms matching the AT. It matches
+a masculine definite determiner with any number (because of the *) and masculine-feminine common noun with any number.
+- The second field shows the lexical forms resulting from applying the AT. The tag ")000numberat"
+tells us that the number of the lexical form is obtained by looking up in the bilingual dictionary
+the SL lexical form in position 0 (the determiner). Similarly, the tag ")001numberat" tells us tells us that the number of the lexical form is obtained by looking up in the bilingual dictionary
+the SL lexical form in position 1 (the noun).
+- The fourth field presents the required values of the inflection tags of the matching words after looking them
+up in the bilingual dictionary. Note that the noun must be masculine-feminine in the target language too. That's why the gender of the noun is not transferred to the determiner.
+- The third field shows the alignments used to obtain the lemmas of the resulting lexical forms.
+
+The rules in Apertium format can be found at $DIR/tuning-proportion_correct_bilphrases_thresholdabove2-$THRESHOLD-subrules/rules/result.xml
+The directory $DIR/tuning-proportion_correct_bilphrases_thresholdabove2-$THRESHOLD-subrules/queries/test-*/experiment/evaluation contains different evaluation metrics of the extracted rules if a test corpus is provided. Some of them are:
+* evaluation_learnedrules: BLEU score
+* evaluation_norules: BLEU score of word-for-word translation, useful to assess the impact of the learned rules
+
+Using the the inferred rules in Apertium
+-----------------------------------------------------------------------
+
+In order to use the inferred rules in Apertium, you will need to perform a couple
+of modifications in the Apertium pipeline (in addition to using the file with the
+inferred rules as the parameter of apertium-transfer):
+
+* Add the following command just after apertium-transfer:  sed 's_\^\([^#$]*\)#\([^<$]*\)\(<[^$]*\)\$_^\1\3#\2$_g'
+It solves some issues in the translation of multi-word expressions with the
+inferred rules.
+* Add the following command just after the previous one: apertium-posttransfer -x POSTTRANSFERFILE. POSTTRANSFERFILE
+is a file automatically generated by ruLearn. You can find it at: OUTPUT_DIRECTORY/config/apertium-l1-l2.posttransfer.ptx

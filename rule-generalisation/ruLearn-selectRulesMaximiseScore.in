@@ -1,0 +1,165 @@
+#! __BASH__
+#
+# Copyright 2009-2016 Víctor M. Sánchez-Cartagena, Felipe Sánchez-Martínez, Universitat d'Alacant
+#
+# This file is part of ruLearn.
+# ruLearn is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# ruLearn is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with ruLearn.  If not, see <http://www.gnu.org/licenses/>.
+#
+
+
+set -o pipefail
+
+MYFULLPATH=`readlink -f $0`
+CURDIR=`dirname "$MYFULLPATH"`
+
+PYTHONLIBDIR=__PYTHONLIBDIR__
+
+#shflags
+. __LIBDIR__/shflags
+
+DEFINE_string 'target_language' 'ca' 'target language' 't'
+DEFINE_string 'beam_search_dir' '' 'directory where the ats are' 'a'
+DEFINE_string 'ats_suffix' '' 'at file suffix' 'x'
+DEFINE_string 'dir' '' 'directory where the new files and dirs will be created' 'd'
+#No longer needed
+#DEFINE_string 'python_home' '' 'dir of python interpreter' 'p'
+DEFINE_string 'beam' '' 'do beam search instead of lin. prog' 'b'
+DEFINE_string 'final_boxes_index' '' 'bxoes index' 'f'
+DEFINE_string 'tag_groups_seqs_suffix' '' 'Tag groups and sequences suffix' 'g'
+DEFINE_string 're_optimize_bleu' 'false' 'optimize bleu score again' 'e'
+DEFINE_string 'apertium_data_dir' '' 'Apertium data dir' 'u'
+DEFINE_boolean 'input_is_not_split' 'false' 'Result of beam search is not split in blocks' 's'
+DEFINE_boolean 'rbpe' false 'Do rbpe' '8'
+DEFINE_boolean 'only_lexical' false 'Only lexical generalisation: group boxes' '7'
+
+FLAGS "$@" || exit $?
+eval set -- "${FLAGS_ARGV}"
+
+echo "ATS suffix: ${FLAGS_ats_suffix}" 1>&2
+
+BEAMSEARCHDIR=`readlink -f ${FLAGS_beam_search_dir}`
+FINALBOXESINDES=`readlink -f ${FLAGS_final_boxes_index}`
+DIR=`readlink -f ${FLAGS_dir}`
+
+CONFIGDIR="$DIR/../config"
+
+BEAM_FLAG="--only_n_first 1000"
+if [ "${FLAGS_beam}" != "" ]; then
+	#BEAM_FLAG="--beam --only_hyps_with_maximum_local --discard_sentences_all_maximum"
+	BEAM_FLAG="--select_boxes_minimum --compute_key_segment_breaking_prob"
+	if [ "${FLAGS_final_boxes_index}" != "" ]; then
+	  #if only_lexical flag is enabled, use stdfinalboxesindex from beamdir, and
+	  #modify results with ids from finalboxesindex
+
+	  if [ "${FLAGS_only_lexical}" == "${FLAGS_TRUE}" ]; then
+	    BEAM_FLAG="$BEAM_FLAG --final_boxes_index $BEAMSEARCHDIR/stdfinalboxesindex"
+	  else
+	    BEAM_FLAG="$BEAM_FLAG --final_boxes_index $FINALBOXESINDES"
+	  fi
+	fi
+fi
+
+RBPE_FLAG=""
+if [ "${FLAGS_rbpe}" == "${FLAGS_TRUE}" ]; then
+  RBPE_FLAG="--rbpe"
+fi
+
+
+mkdir -p $DIR
+RESULT_SUFFIX=`echo "${FLAGS_ats_suffix}" | sed 's:.result::'`
+RULESID_FILE=$DIR/rulesid$RESULT_SUFFIX
+RESULT_FILE=$DIR/result$RESULT_SUFFIX
+ALL_ATS_FILE=$BEAMSEARCHDIR/ats${FLAGS_ats_suffix}
+
+if [ "${FLAGS_input_is_not_split}" == "${FLAGS_TRUE}" ]; then
+
+SCORES_FILE=$BEAMSEARCHDIR/scores${FLAGS_ats_suffix}
+ALL_SENTENCES_FILE=$BEAMSEARCHDIR/sentences.gz
+ALL_SUPERSEGMENTS_FILE=$BEAMSEARCHDIR/supersegments${FLAGS_ats_suffix}
+
+else
+
+SCORES_FILE=$DIR/allscores$RESULT_SUFFIX
+ALL_SENTENCES_FILE=$DIR/allsentences.gz
+ALL_SUPERSEGMENTS_FILE=$DIR/allsupersegments$RESULT_SUFFIX
+
+rm -f $SCORES_FILE ${SCORES_FILE%.gz}
+rm -f ${ALL_SENTENCES_FILE} ${ALL_SENTENCES_FILE%.gz}
+rm -f ${ALL_SUPERSEGMENTS_FILE} ${ALL_SUPERSEGMENTS_FILE%.gz}
+NUMBERS=`ls  $BEAMSEARCHDIR | grep "^scores-" | awk -F"-" '{print $2}' | LC_ALL=C sort | uniq`
+TOTALNUMBERS=`echo "$NUMBERS" | wc -l`
+for number in $NUMBERS; do
+
+	NUMLOCALSCORES=`zcat "$BEAMSEARCHDIR/supersegments-${number}-${TOTALNUMBERS}${FLAGS_ats_suffix}" | wc -l`
+
+	zcat "$BEAMSEARCHDIR/scores-${number}-${TOTALNUMBERS}${FLAGS_ats_suffix}" | head -n $NUMLOCALSCORES >> ${SCORES_FILE%.gz}
+
+	echo "${number}:" >> ${SCORES_FILE}-debug
+	cat "$BEAMSEARCHDIR/scores-${number}-${TOTALNUMBERS}${FLAGS_ats_suffix}-debug" | grep "ERROR" >> ${SCORES_FILE}-debug
+
+	zcat "$BEAMSEARCHDIR/supersegments-${number}-${TOTALNUMBERS}${FLAGS_ats_suffix}" | head -n $NUMLOCALSCORES >> ${ALL_SUPERSEGMENTS_FILE%.gz}
+	echo "${number}:" >> ${ALL_SUPERSEGMENTS_FILE}-debug
+	cat "$BEAMSEARCHDIR/supersegments-${number}-${TOTALNUMBERS}${FLAGS_ats_suffix}.debug" | grep "ERROR" >> ${ALL_SUPERSEGMENTS_FILE}-debug
+
+	zcat "$BEAMSEARCHDIR/sentences.${number}-${TOTALNUMBERS}.gz" | head -n $NUMLOCALSCORES >> ${ALL_SENTENCES_FILE%.gz}
+done
+gzip ${SCORES_FILE%.gz}
+gzip ${ALL_SENTENCES_FILE%.gz}
+gzip ${ALL_SUPERSEGMENTS_FILE%.gz}
+
+fi
+
+#change to source code dir to allow python to find script
+pushd $PYTHONLIBDIR
+
+NUMSENTENCES=`zcat $ALL_SENTENCES_FILE | wc -l`
+NUMSCORES=`zcat $SCORES_FILE | wc -l`
+NUMSUPERSEGMENTS=`zcat $ALL_SUPERSEGMENTS_FILE | wc -l`
+
+if [ "$NUMSENTENCES" == "$NUMSCORES" -a "$NUMSENTENCES" == "$NUMSUPERSEGMENTS" ]; then
+
+zcat ${SCORES_FILE} | __PYTHON__ $PYTHONLIBDIR/maximiseScore.py $BEAM_FLAG --target_language ${FLAGS_target_language} --tag_groups_file_name $CONFIGDIR/taggroups${FLAGS_tag_groups_seqs_suffix} --tag_sequences_file_name $CONFIGDIR/tagsequences${FLAGS_tag_groups_seqs_suffix} --alignment_templates $ALL_ATS_FILE --sentences ${ALL_SENTENCES_FILE}  --supersegments_with_maximum_score  $ALL_SUPERSEGMENTS_FILE --apertium_data_dir "${FLAGS_apertium_data_dir}" $RBPE_FLAG --ternary_search 4  | gzip > $RULESID_FILE.prev.gz
+if [ "$?" != "0" ]; then
+	echo "Error in the selection of lexical categories" >&2
+	exit 1
+fi
+
+#SED_EXPR=`zcat $RULESID_FILE | sed 's:$:p:' | tr '\n' ';' | sed 's:;$::'`
+#zcat $ALL_ATS_FILE | sed -n "$SED_EXPR" | gzip > $RESULT_FILE
+
+ if [ "${FLAGS_only_lexical}" == "${FLAGS_TRUE}" ]; then
+   #geneate original box ids
+   MAPPINGFILE=$BEAMSEARCHDIR/mappingsfinalboxestostdfinalboxes
+
+   rm -f $RULESID_FILE.tmp
+   zcat $RULESID_FILE.prev.gz | while read STDID ; do
+   	grep "	$STDID$" < $MAPPINGFILE | cut -f 1 >> $RULESID_FILE.tmp
+   done
+
+   cat $RULESID_FILE.tmp | gzip > $RULESID_FILE
+
+ else
+   cp $RULESID_FILE.prev.gz  $RULESID_FILE
+ fi
+
+else
+
+echo "ERROR: Different length of sentences, scores and supersegments"
+exit 1
+
+echo "" | gzip > $RULESID_FILE
+
+fi
+
+popd
