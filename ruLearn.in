@@ -51,6 +51,7 @@ DEFINE_string 'corpus_head_size' '' 'Size (in lines) of the prefix of the traini
 #DEFINE_boolean 'use_fixed_dictionary' 'false' 'use fixed bilingual dictionary' 'l'
 DEFINE_boolean 'alignments_with_lemmas' 'false' 'Use only lemmas to learn alignment models and obtain Viterbi alignment' 'p'
 DEFINE_boolean 'alignments_with_bildic' 'false' 'Add bilingual dictionary to corpus for obtaining word alignments. This option is likely to increase quality of the obtained rules.' 'j'
+DEFINE_boolean 'alignments_with_bildic_only_l1_l2' 'false' 'Use L1->L2 bilingual dictionaries for enriching word alignment corpora in both directions' 'J'
 DEFINE_boolean 'discard_a_fifth_of_corpus' 'false' 'Discard a fifth part of the training corpus and use it as development corpus.' 'b'
 DEFINE_boolean 'only_lexical_generalisation' 'false' 'Dont generalise among unseen linguistic features. Enabling this option will significantly speed up the inference process. Enable it if your parallel corpus contains more than 5000 words.' 'q'
 DEFINE_string 'override_bin_bil_dir' '' 'Use this file as L1-L2 compiled bilingual dictionary' 'B'
@@ -163,6 +164,11 @@ if [ "${FLAGS_alignments_with_lemmas}" == "${FLAGS_TRUE}" ]; then
   LEMMATIZEDMAKVAR="PAR_GIZA_LEMMA=yes"
 fi
 
+BILDICL1L2ALWAYSMAKVAR=""
+if [ "${FLAGS_alignments_with_bildic_only_l1_l2}" == "${FLAGS_TRUE}" ]; then
+   BILDICL1L2ALWAYSMAKVAR="PAR_BILDIC_L1_L2_ALWAYS=yes"
+fi
+
 ZENSMAKVAR=""
 #if [ "${FLAGS_zens_extraction}" == "${FLAGS_TRUE}" ]; then
 #  ZENSMAKVAR="PAR_EXTRACTION_ZENS=yes"
@@ -266,7 +272,7 @@ else
     elif [ -f $DATADIR/.deps/apertium-hbs.hbs.dix  ]; then
     	MONODIXL2=$DATADIR/.deps/apertium-hbs.hbs.dix
     else
-    	if [ "${FLAGS_alignments_with_bildic}" == "${FLAGS_TRUE}" ]; then
+    	if [ "${FLAGS_alignments_with_bildic}" == "${FLAGS_TRUE}" -a "${FLAGS_alignments_with_bildic_only_l1_l2}" == ${FLAGS_FALSE} ]; then
     		echo "Monolingual dictionary .dix file for $TL not found in Apertium data directory. Please disable --alignments_with_bildic flag or specify a .dix file with --override_mono_dix_l2"
     		exit 1
     	fi
@@ -411,7 +417,7 @@ fi
   #run makefile to extract bilingual phrases
   pushd $BILEXTRACTIONDIR
 	echo "Running bilingual phrase extraction ..."
-  make -f Makefile-phrase-extract PAR_DONT_REMOVE_CONFLICTS=yes PAR_MAX=$MAX_LENGTH PAR_L1=$SL PAR_L2=$TL PAR_NO_SHORT_RESTRICTIONS=yes PAR_MY_EXTRACTING=yes $MARKERFLAG PAR_DATADIR="$DATADIR" PAR_RULELEARNINGLIBDIR="$PYTHONLIBDIR" PAR_GIZADIR="$GIZADIR" PAR_ENDS_ALIGNED="ENDSALIGNED"  $STRUCTMAKVAR $CORPUSANALYSEDMAKVAR PAR_VARIANT="$VARIANT"  PAR_EXTREMES_VARIANT="$EXTREMESVARIANT" PAR_PUNCTUATION_VARIANT="$PUNCTVARIANT" $ZENSMAKVAR $FIXEDDICTMAKVAR $LEMMATIZEDMAKVAR $ALIGNMENTSHEADMAKVAR $BILDIXMAKVAR $BILDIXFORALIGNMAKVAR $MONODIXL1MAKVAR $MONODIXL2MAKVAR PAR_INTERNALTL=$INTERNALTL  &> $MYFULLTMPDIR/bilingualphrases.log || {
+  make -f Makefile-phrase-extract PAR_DONT_REMOVE_CONFLICTS=yes PAR_MAX=$MAX_LENGTH PAR_L1=$SL PAR_L2=$TL PAR_NO_SHORT_RESTRICTIONS=yes PAR_MY_EXTRACTING=yes $MARKERFLAG PAR_DATADIR="$DATADIR" PAR_RULELEARNINGLIBDIR="$PYTHONLIBDIR" PAR_GIZADIR="$GIZADIR" PAR_ENDS_ALIGNED="ENDSALIGNED"  $STRUCTMAKVAR $CORPUSANALYSEDMAKVAR PAR_VARIANT="$VARIANT"  PAR_EXTREMES_VARIANT="$EXTREMESVARIANT" PAR_PUNCTUATION_VARIANT="$PUNCTVARIANT" $ZENSMAKVAR $FIXEDDICTMAKVAR $LEMMATIZEDMAKVAR $ALIGNMENTSHEADMAKVAR $BILDIXMAKVAR $BILDIXFORALIGNMAKVAR $MONODIXL1MAKVAR $MONODIXL2MAKVAR $BILDICL1L2ALWAYSMAKVAR PAR_INTERNALTL=$INTERNALTL  &> $MYFULLTMPDIR/bilingualphrases.log || {
 		popd
     echo "Error in the extraction of bilingual phrases. Aborting. See the log at $MYTMPDIR/bilingualphrases.log for more information" >&2 ;
     exit 1;

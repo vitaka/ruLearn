@@ -305,9 +305,13 @@ onlyalignments: alignments.$(L1)-$(INTERNALL2).gz alignments.$(INTERNALL2)-$(L1)
 ifdef PAR_BILDIXFORALIGN
 corpusfrombildic.$(L1)-$(L2).sl:
 	bash generateCorpusFromBildic.sh $(BIL_L1_L2_FORALIGN) $(PAR_MONODIXL1) corpusfrombildic.$(L1)-$(L2)
-
+ifdef PAR_BILDIC_L1_L2_ALWAYS
+corpusfrombildic.$(L2)-$(L1).sl: corpusfrombildic.$(L1)-$(L2).sl
+	cp corpusfrombildic.$(L2)-$(L1).sl corpusfrombildic.$(L1)-$(L2).sl
+else
 corpusfrombildic.$(L2)-$(L1).sl:
 	bash generateCorpusFromBildic.sh $(BIL_L2_L1_FORALIGN) $(PAR_MONODIXL2) corpusfrombildic.$(L2)-$(L1)
+endif
 endif
 
 attributesChange.$(L1)-$(L2): $(PAR_BILDIX)
