@@ -102,12 +102,12 @@ fi
 if [ "${FLAGS_only_lexical}" == "${FLAGS_TRUE}" ]; then
 #if we are doing only lexical generalisation, map boxes indexes to new ones that account only for the sequence of lexical categories
 
-cat ${FLAGS_final_boxes_index} | /usr/bin/python $PYTHONLIBDIR/addStandardBoxDescToOnlyLexical.py > $FULWORKDIR/finalboxesindex.plusstd
-cut -f 3 $FULWORKDIR/finalboxesindex.plusstd | LC_ALL=C sort | LC_ALL=C uniq | awk '{printf "%d\t%s\n", NR, $0}' > $FULWORKDIR/stdfinalboxesindex
-LC_ALL=C sort -t'	' -k3,3 $FULWORKDIR/finalboxesindex.plusstd | join -t'	' -1 3 -2 2 - $FULWORKDIR/stdfinalboxesindex | awk -F'\t' '{ print $2 "\t"  $4 }' > $FULWORKDIR/mappingsfinalboxestostdfinalboxes
+cat ${FLAGS_final_boxes_index} | /usr/bin/python $PYTHONLIBDIR/addStandardBoxDescToOnlyLexical.py > $FULWORKDIR/finalboxesindex.plusstd-$$
+cut -f 3 $FULWORKDIR/finalboxesindex.plusstd-$$ | LC_ALL=C sort | LC_ALL=C uniq | awk '{printf "%d\t%s\n", NR, $0}' > $FULWORKDIR/stdfinalboxesindex-$$
+LC_ALL=C sort -t'	' -k3,3 $FULWORKDIR/finalboxesindex.plusstd-$$ | join -t'	' -1 3 -2 2 - $FULWORKDIR/stdfinalboxesindex-$$ | awk -F'\t' '{ print $2 "\t"  $4 }' > $FULWORKDIR/mappingsfinalboxestostdfinalboxes-$$
 
-BOXESFLAG="--final_boxes_index  $FULWORKDIR/stdfinalboxesindex --minimum_covered_words --allow_incompatible_rules"
-BOXESFLAGSEC="--final_boxes_index  $FULWORKDIR/stdfinalboxesindex"
+BOXESFLAG="--final_boxes_index  $FULWORKDIR/stdfinalboxesindex-$$ --minimum_covered_words --allow_incompatible_rules"
+BOXESFLAGSEC="--final_boxes_index  $FULWORKDIR/stdfinalboxesindex-$$"
 
 else
 

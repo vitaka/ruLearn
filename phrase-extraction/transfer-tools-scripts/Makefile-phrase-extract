@@ -187,19 +187,30 @@ endif
 ifeq ($(wildcard $(CONSTRAINTGRAMMAR_L1)),)
     CONSTRAINTGRAMMAR_L1_CMD = cat -
 else
-    CONSTRAINTGRAMMAR_L1_CMD = cg-proc $(CONSTRAINTGRAMMAR_L1)
+    CONSTRAINTGRAMMAR_L1_CMD = cg-proc -w $(CONSTRAINTGRAMMAR_L1)
 endif
 
 ifeq ($(wildcard $(CONSTRAINTGRAMMAR_L2)),)
     CONSTRAINTGRAMMAR_L2_CMD = cat -
 else
-    CONSTRAINTGRAMMAR_L2_CMD = cg-proc $(CONSTRAINTGRAMMAR_L2)
+ifeq ($(L2),kaz)
+    CONSTRAINTGRAMMAR_L2_CMD = cg-proc -1 -n -w $(CONSTRAINTGRAMMAR_L2)
+else
+    CONSTRAINTGRAMMAR_L2_CMD = cg-proc -w $(CONSTRAINTGRAMMAR_L2)
+endif
 endif
 
 ifeq ($(L1),br)
 	UGLY_BR_FIX=sed 's:\^ ::g'
 else
 	UGLY_BR_FIX=cat -
+endif
+
+#Ugly fix for kaz
+ifeq ($(L2),kaz)
+	TAGGER_CMD_L2=cat -
+else
+	TAGGER_CMD_L2=apertium-tagger -g $(PROB_L2)
 endif
 
 ifeq ($(wildcard $(LEXICALSELECTIONRULES_L1)),)
@@ -332,9 +343,9 @@ endif
 endif
 	@echo "Analysing "$(L1)".txt.gz to train '"$(L1)"-"$(INTERNALL2)"' alignments ... "
 	mkdir -p $(TRAINGIZA_L1_L2)
-	zcat $(L1).txt.gz | awk '{print $$0 " ."}' | apertium-destxt | lt-proc -a $(MORF_L1) | \
+	zcat $(L1).txt.gz | awk '{print $$0 " ."}' | apertium-destxt | lt-proc -w  -a $(MORF_L1) | \
 	$(CONSTRAINTGRAMMAR_L1_CMD) | apertium-tagger -g $(PROB_L1) | apertium-pretransfer | $(UGLY_BR_FIX)  | apertium-retxt | \
-	sed -re "s/ \^[.]<sent>\\$$\$$//g"  | apertium-preprocess-corpus-transfer-at |\
+	sed -re "s/ \^[.]<sent>\\$$\$$//g" | sed 's:<err_orth>::g'  | apertium-preprocess-corpus-transfer-at |\
 	$(PREPROCESS_L1_FOR_L1_L2) > $@
 ifdef PAR_BILDIXFORALIGN
 	cat corpusfrombildic.$(L1)-$(L2).sl >> $@
@@ -354,9 +365,9 @@ endif
 endif
 	@echo "Analysing "$(INTERNALL2)".txt.gz to train '"$(L1)"-"$(INTERNALL2)"' alignments ... "
 	mkdir -p $(TRAINGIZA_L1_L2)
-	zcat $(INTERNALL2).txt.gz | awk '{print $$0 " ."}' | apertium-destxt | lt-proc -a $(MORF_L2) |\
-	$(CONSTRAINTGRAMMAR_L2_CMD) | apertium-tagger -g $(PROB_L2) | apertium-pretransfer | apertium-retxt |\
-	sed -re "s/ \^[.]<sent>\\$$\$$//g"  | apertium-preprocess-corpus-transfer-at |\
+	zcat $(INTERNALL2).txt.gz | awk '{print $$0 " ."}' | apertium-destxt | lt-proc -a -w $(MORF_L2) |\
+	$(CONSTRAINTGRAMMAR_L2_CMD) | $(TAGGER_CMD_L2)  | apertium-pretransfer | apertium-retxt |\
+	sed -re "s/ \^[.]<sent>\\$$\$$//g" | sed 's:<err_orth>::g'  | apertium-preprocess-corpus-transfer-at |\
 	$(PREPROCESS_L2_FOR_L1_L2) > $@
 	cat $@ | wc -l > corpuslength
 ifdef PAR_BILDIXFORALIGN
@@ -375,9 +386,9 @@ endif
 endif
 	@echo "Analysing "$(INTERNALL2)".txt.gz to train '"$(INTERNALL2)"-"$(L1)"' alignments ... "
 	mkdir -p $(TRAINGIZA_L2_L1)
-	zcat $(INTERNALL2).txt.gz | awk '{print $$0 " ."}' | apertium-destxt | lt-proc -a $(MORF_L2) |\
-        $(CONSTRAINTGRAMMAR_L2_CMD) | apertium-tagger -g $(PROB_L2) | apertium-pretransfer | apertium-retxt |\
-        sed -re "s/ \^[.]<sent>\\$$\$$//g"  | apertium-preprocess-corpus-transfer-at |\
+	zcat $(INTERNALL2).txt.gz | awk '{print $$0 " ."}' | apertium-destxt | lt-proc -a -w $(MORF_L2) |\
+        $(CONSTRAINTGRAMMAR_L2_CMD) | $(TAGGER_CMD_L2) | apertium-pretransfer | apertium-retxt |\
+	sed -re "s/ \^[.]<sent>\\$$\$$//g" | sed 's:<err_orth>::g'  | apertium-preprocess-corpus-transfer-at |\
 	$(PREPROCESS_L2_FOR_L2_L1) > $@
 ifdef PAR_BILDIXFORALIGN
 	cat corpusfrombildic.$(L2)-$(L1).sl >> $@
@@ -397,9 +408,9 @@ endif
 
 	@echo "Analysing "$(L1)".txt.gz to train '"$(INTERNALL2)"-"$(L1)"' alignments ... "
 	mkdir -p $(TRAINGIZA_L2_L1)
-	zcat $(L1).txt.gz | awk '{print $$0 " ."}' | apertium-destxt | lt-proc -a $(MORF_L1) |\
+	zcat $(L1).txt.gz | awk '{print $$0 " ."}' | apertium-destxt | lt-proc -a -w $(MORF_L1) |\
         $(CONSTRAINTGRAMMAR_L1_CMD) | apertium-tagger -g $(PROB_L1) | apertium-pretransfer | $(UGLY_BR_FIX) | apertium-retxt |\
-        sed -re "s/ \^[.]<sent>\\$$\$$//g"  | apertium-preprocess-corpus-transfer-at |\
+	sed -re "s/ \^[.]<sent>\\$$\$$//g" | sed 's:<err_orth>::g' | apertium-preprocess-corpus-transfer-at |\
 	$(PREPROCESS_L1_FOR_L2_L1) > $@
 	cat $@ | wc -l > corpuslength
 ifdef PAR_BILDIXFORALIGN

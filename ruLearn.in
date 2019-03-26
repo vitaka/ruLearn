@@ -32,7 +32,7 @@ DEFINE_string 'corpus' '' 'Prefix of files containing the training parallel corp
 #DEFINE_string 'giza_dir' '~/giza-pp/GIZA++-v2' 'Giza++ directory' 'g'
 DEFINE_string 'config' '' 'Linguistic configuration file (mandatory)' 'g'
 DEFINE_string 'data_dir' '' 'Directory where the source and compiled Apertium dictionaries can be found (default: __APERTIUMPREFIX__/share/apertium/apertium-SL-TL/)' 'd'
-#DEFINE_string 'apertium_prefix' '' 'Prefix where Apertium was installed (default: /usr/local/)' 'u'
+DEFINE_string 'apertium_prefix' '' 'Prefix where Apertium linguistic packages and models were installed (default: __APERTIUMPREFIX__)' 'u'
 ######################
 # (optional)
 # Temporary directory where all the the files will be stored
@@ -185,9 +185,11 @@ if [ ! -d "$DATADIR" ]; then
 	exit 1
 fi
 
-#APERTIUMPREFIX=${FLAGS_apertium_prefix}
-#Now managed by autoconf
-APERTIUMPREFIX=__APERTIUMPREFIX__
+if [ "${FLAGS_apertium_prefix}" == ""  ]; then
+	APERTIUMPREFIX=__APERTIUMPREFIX__
+else
+	APERTIUMPREFIX="${FLAGS_apertium_prefix}"
+fi
 
 FIXEDDICTMAKVAR=""
 #if [ "${FLAGS_use_fixed_dictionary}" == "${FLAGS_TRUE}" ]; then
@@ -497,18 +499,22 @@ fi
 		fi
 
     for PART_NUM in `seq $PART_TOTAL`; do
-    	PART="$PART_NUM-$PART_TOTAL"
-    	LOCAL_SENTENCES_FILE=$MYTMPDIR/beamsearch-$FILTERING_NAME/sentences.$PART.gz
-	COMPARISONNUMBER=`expr $PART_NUM % $PART_TOTAL`
-	NUMLINE=0
+	PART="$PART_NUM-$PART_TOTAL"
+        LOCAL_SENTENCES_FILE=$MYTMPDIR/beamsearch-$FILTERING_NAME/sentences.$PART.gz
+        COMPARISONNUMBER=`expr $PART_NUM % $PART_TOTAL`
 	rm -f ${LOCAL_SENTENCES_FILE%.gz} ${LOCAL_SENTENCES_FILE}
-	zcat $SENTENCES_FILE | while read line ; do
-	  NUMLINE=`expr $NUMLINE + 1`
-	  RESULTREMAINDER=`expr $NUMLINE % $PART_TOTAL`
-	  if [ "$RESULTREMAINDER" == "$COMPARISONNUMBER" ]; then
-	    echo "$line" >> ${LOCAL_SENTENCES_FILE%.gz}
-	  fi
-	done
+	zcat $SENTENCES_FILE  | __PYTHON__ -c '
+import sys
+compreference=int(sys.argv[1])
+part_total=int(sys.argv[2])
+numline=0
+for line in sys.stdin:
+	numline+=1
+	line=line.rstrip("\n")
+	rem=numline % part_total
+	if rem == compreference:
+		print line
+' $COMPARISONNUMBER  $PART_TOTAL  > ${LOCAL_SENTENCES_FILE%.gz}
 	gzip ${LOCAL_SENTENCES_FILE%.gz}
     done
 

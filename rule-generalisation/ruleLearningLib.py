@@ -2320,10 +2320,11 @@ class AlignmentTemplate(object):
 		for i in range(len(self.parsed_sl_lexforms)):
 			sllex=self.parsed_sl_lexforms[i]
 			res=self.parsed_restrictions[i]
-			newtags=list()
-			newtags.extend(res.get_tags())
-			newtags.extend(sllex.get_tags()[len(res.get_tags()):])
-			res.set_tags(newtags)
+                        if sllex.pos == res.pos:
+				newtags=list()
+				newtags.extend(res.get_tags())
+				newtags.extend(sllex.get_tags()[len(res.get_tags()):])
+				res.set_tags(newtags)
 
 	def add_explicit_empty_tags(self):
 		#tagsequences:dict

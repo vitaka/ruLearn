@@ -344,10 +344,15 @@ class RuleApplicationHypothesis(object):
             resultsDictionary=dict()
             for i in range(len(lines)):
                 if len(lines[i]) == 0:
-                    print >> sys.stderr, "Line with length 0"
-                    print >> sys.stderr, "command output"
-                    print >> sys.stderr, error
-                    exit(1)
+                    #We allow empty lines only if a single TL lexical form without lemma
+                    hypData=listOfstrHyps[i]
+                    tlLex=hypData.split("|")[1].split(" ")
+                    if not ( len(tlLex) == 1 and tlLex[0].startswith("^<")  ):
+                        print >> sys.stderr, "Line with length 0"
+                        print >> sys.stderr, "command output"
+                        print >> sys.stderr, error
+                        exit(1)
+                    lines[i]="0.0"
                 resultsDictionary[listOfstrHyps[i]]=float(lines[i])
                 debug(str(float(lines[i]))+" | "+listOfstrHyps[i])
 
