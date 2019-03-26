@@ -156,6 +156,9 @@ class RuleApplicationHypothesis(object):
     def is_empty(self):
         return len(self.appliedRules) == 0 and len(self.discardedRules) == 0
 
+    def is_can_generate_empty(self):
+        return len(self.translation) == 0 or all( tw.get_lemma() == "" for tw in self.translation )
+
     def get_applied_rules(self):
         return self.appliedRules
 
@@ -304,9 +307,12 @@ class RuleApplicationHypothesis(object):
         fileobj=NamedTemporaryFile(delete=False)
 
         if sentenceLevelScores:
-            listOfstrHyps=list(set([hyp.to_str_for_scoring() for hyp in hypothesisList]))
+            listOfstrHyps=list(set([hyp.to_str_for_scoring() for hyp in hypothesisList if not hyp.is_can_generate_empty()]))
         else:
-            listOfstrHyps=[hyp.to_str_for_scoring() for hyp in hypothesisList]
+            listOfstrHyps=[hyp.to_str_for_scoring() for hyp in hypothesisList if not hyp.is_can_generate_empty() ]
+        discardedHyps=[ hyp for hyp in hypothesisList if hyp.is_can_generate_empty() ]
+        for hyp in discardedHyps:
+            hyp.set_score(0.0)
 
         debug("\nScoring hypotheses")
 
