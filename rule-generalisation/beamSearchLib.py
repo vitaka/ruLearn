@@ -314,6 +314,12 @@ class RuleApplicationHypothesis(object):
         for hyp in discardedHyps:
             hyp.set_score(0.0)
 
+        if len(listOfstrHyps) == 0:
+            if sentenceLevelScores:
+                return
+            else:
+                return 0.0
+
         debug("\nScoring hypotheses")
 
         for strhyp in listOfstrHyps:
@@ -363,7 +369,8 @@ class RuleApplicationHypothesis(object):
                 debug(str(float(lines[i]))+" | "+listOfstrHyps[i])
 
             for hyp in hypothesisList:
-                hyp.set_score(resultsDictionary[hyp.to_str_for_scoring()])
+                if hyp.to_str_for_scoring() in resultsDictionary:
+                    hyp.set_score(resultsDictionary[hyp.to_str_for_scoring()])
         else:
             if len(lines) != 1:
                 print >> sys.stderr, "ERROR. NUmber of lines ("+str(len(lines))+") does not match hypothesis list ("+str(len(listOfstrHyps))+")"
