@@ -37,7 +37,7 @@ FROMPRETRANSFER=`cat $ORIGINAL_MODE | awk -F"apertium-pretransfer" '{ print $2 }
 
 FROMTRANSFER=`cat $ORIGINAL_MODE | awk  '{print substr($0,index($0,"apertium-transfer")) }' | sed 's:^apertium-transfer::' | tr -d '\n'`
 
-FROMSECONDLTPROC=`echo $FROMTRANSFER |  grep -o 'lt-proc.*$'  | tr -d '\n'` #awk -F"lt-proc" '{ print $2 }' | tr -d '\n'
+FROMSECONDLTPROC=`echo $FROMTRANSFER | grep -Eo '(hfst|lt)-proc.*$'  | tr -d '\n'` #awk -F"lt-proc" '{ print $2 }' | tr -d '\n'
 APERTIUM_PATH=`echo $TOPRETRANSFER | awk -F"lt-proc" '{ print $1 }' | tr -d '\n'`
 
 if [ "$MODE_FOR_RBPE_GENERATION" != "" ]; then

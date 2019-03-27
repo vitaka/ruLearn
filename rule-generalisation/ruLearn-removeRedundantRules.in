@@ -81,12 +81,11 @@ if $USE_CORPUS ; then
 	zcat $ANALYSED_PARALLEL_CORPUS.${TL}.gz | sed -r 's_^ *\^_^_' | sed -r 's_\$ *\^_$ ^_g' | sed -r 's_ *$__'  > $MYDIR/referenceCorpus.${TL}
 fi
 
+APERTIUMPATH=""
 if [ "$APERTIUM_PREFIX" != "" ]; then
   TRANSFERTOOLSPATH="LD_LIBRARY_PATH=$APERTIUM_PREFIX/lib $APERTIUM_PREFIX/bin/"
-  APERTIUMPATH="$APERTIUM_PREFIX/bin/"
 else
   TRANSFERTOOLSPATH=""
-  APERTIUMPATH=""
 fi
 
 cat $RULES_FILE | gzip > ${RULES_FILE}.1.upper.gz
