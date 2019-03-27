@@ -535,6 +535,8 @@ for line in sys.stdin:
 				done
 				exit 1
 	  fi
+     STDBOXES=$(find $MYTMPDIR/beamsearch-$FILTERING_NAME/  -name 'stdfinalboxesindex-*' | head -n 1)
+     cp $STDBOXES $MYTMPDIR/beamsearch-$FILTERING_NAME/stdfinalboxesindex
 
     else
     echo "Best rule coverages directory already exists. Omitting computation of best rule coverages." 1>&2
