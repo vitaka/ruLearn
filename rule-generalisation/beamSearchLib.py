@@ -802,10 +802,11 @@ class RuleApplicationHypothesis(object):
             else:
                 bilDicTranslation=AT_LexicalForm()
                 bilDicTranslation.set_lemma(tllemmas_from_dictionary[index])
-                bilDicTranslation.set_pos(parsed_sl_lexforms[index].get_pos())
                 bilDicTags=list()
                 bilDicTags.extend(parsed_restrictions[index].get_tags())
-                bilDicTags.extend(parsed_sl_lexforms[index].get_tags()[len(bilDicTags):])
+                bilDicTranslation.set_pos(parsed_restrictions[index].get_pos())
+                if parsed_sl_lexforms[index].get_pos() == parsed_restrictions[index].get_pos():
+                    bilDicTags.extend(parsed_sl_lexforms[index].get_tags()[len(bilDicTags):])
                 bilDicTranslation.set_tags(bilDicTags)
             target_lexforms.append(bilDicTranslation)
             newHyp.add_to_rules_list(RuleApplicationHypothesis.WORDFORWORDRULEID, [ parsed_sl_lexforms[index].get_pos() ])
