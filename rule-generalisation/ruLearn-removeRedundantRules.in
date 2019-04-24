@@ -288,15 +288,20 @@ do
 		  cat $MYDIR/translations_${ITERATION}/test.diff >> $MYDIR/summary.debug.inverse
 		  echo "Wrongly translated: " >> $MYDIR/summary.debug.inverse
 		  #paste -d '|' $MYDIR/translations_${ITERATION}/test.source $MYDIR/translations_${ITERATION}/test.reference >> $MYDIR/summary.debug.inverse
+		  echo "Starting loop for writing rules applied in debuf file"
 		  paste -d '|' $MYDIR/translations_${ITERATION}/test.source $MYDIR/translations_${ITERATION}/test.reference $MYDIR/translations_${ITERATION}/test.translation.appliedrules | while read myline ; do
+		    echo "Read '$myline'"
 		    rm -f $MYDIR/translations_${ITERATION}/rulesApplied
 		    FIRSTFIELD=`echo "$myline" | cut -f 1 -d '|'`
 		    if [ "$FIRSTFIELD" != "" ]; then
+		      
 		      RULESID=`echo "$myline" | cut -f3 -d '|'`
 		      index=0
+		      echo "Looping through RULESID $RULESID"
 		      for RULEID in $RULESID ; do
+                          echo "Running loop body for RULEID $RULEID"
 			  if [ "$RULEID" != "-1" ]; then
-			    cat $MYDIR/queries/$ITERATIONVAR/experiment/rules/alignmentTemplates.txt | head -n $RULEID | tail -n 1 | sed 's:^:\t:' >> $MYDIR/translations_${ITERATION}/rulesApplied
+			    cat $MYDIR/queries/$ITERATION/experiment/rules/alignmentTemplates.txt | head -n $RULEID | tail -n 1 | sed 's:^:\t:' >> $MYDIR/translations_${ITERATION}/rulesApplied || true
 			  else
 			    echo  "	WORDFORWORD" >> $MYDIR/translations_${ITERATION}/rulesApplied
 			  fi
